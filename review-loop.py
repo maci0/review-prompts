@@ -391,8 +391,9 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--log", type=Path, default=None, help="tee output to FILE")
     p.add_argument(
-        "--prompt-dir", type=Path, default=Path.home() / "prompts",
-        help="directory of *-review.md files (default ~/prompts)",
+        "--prompt-dir", type=Path,
+        default=Path(__file__).resolve().parent,
+        help="directory of *-review.md files (default: script directory)",
     )
     p.add_argument("--reviews", default="", help="comma-separated subset to run")
     p.add_argument("--exclude", default="", help="comma-separated reviews to skip")

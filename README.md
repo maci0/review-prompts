@@ -47,7 +47,7 @@ Run `./review-loop.py --help` for the full option list.
 | `--max-loops N` | 0 (infinite) | Stop after N loops. |
 | `--timeout DUR` | `30m` | Per-review timeout (`90s`, `30m`, `1h`, `2d`). |
 | `--log FILE` | — | Tee stdout/stderr to FILE. |
-| `--prompt-dir DIR` | `~/prompts` | Where `*-review.md` files live. |
+| `--prompt-dir DIR` | script dir | Where `*-review.md` files live. |
 | `--reviews LIST` | all | Comma-separated subset to run. |
 | `--exclude LIST` | none | Comma-separated reviews to skip. |
 | `--dry-run` | off | Print planned schedule and exit. |
