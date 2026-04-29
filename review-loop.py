@@ -73,20 +73,36 @@ def parse_duration(s: str) -> int:
     return n * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
 
 
+MIXED_KEYWORDS = {"mixed", "random", "all"}
+
+
 def parse_models(s: str) -> list[ToolSpec]:
     specs: list[ToolSpec] = []
+    seen: set[ToolSpec] = set()
     for entry in s.split(","):
         entry = entry.strip()
         if not entry:
+            continue
+        if entry.lower() in MIXED_KEYWORDS:
+            for t in sorted(VALID_TOOLS):
+                spec = ToolSpec(t)
+                if spec not in seen:
+                    specs.append(spec)
+                    seen.add(spec)
             continue
         tool, _, model = entry.partition(":")
         tool = tool.strip()
         model = model.strip() or None
         if tool not in VALID_TOOLS:
             raise argparse.ArgumentTypeError(
-                f"unknown tool: {tool!r} (valid: {', '.join(sorted(VALID_TOOLS))})"
+                f"unknown tool: {tool!r} "
+                f"(valid: {', '.join(sorted(VALID_TOOLS))}, "
+                f"or {'/'.join(sorted(MIXED_KEYWORDS))} for all)"
             )
-        specs.append(ToolSpec(tool, model))
+        spec = ToolSpec(tool, model)
+        if spec not in seen:
+            specs.append(spec)
+            seen.add(spec)
     if not specs:
         raise argparse.ArgumentTypeError("no models specified")
     return specs
@@ -352,14 +368,18 @@ def parse_args() -> argparse.Namespace:
         epilog=(
             "Examples:\n"
             "  review-loop.py --models claude\n"
+            "  review-loop.py --models mixed                 # all tools, default models\n"
             "  review-loop.py --models claude,gemini,codex\n"
             "  review-loop.py --models claude:opus-4-7,codex:gpt-5-codex\n"
+            "  review-loop.py --models mixed,claude:opus-4-7 # all + extra pinned model\n"
         ),
     )
     p.add_argument(
-        "--models", type=parse_models, required=True,
-        help="comma-separated tools, optionally tool:model "
-             "(e.g. claude,codex or claude:opus-4-7,codex:gpt-5-codex)",
+        "--models", type=parse_models, default=None,
+        help="comma-separated tools, optionally tool:model. "
+             "Use 'mixed' (or 'random'/'all') as shorthand for every supported tool. "
+             "Examples: 'claude', 'mixed', 'claude:opus-4-7,codex:gpt-5-codex'. "
+             "Default: auto-detect installed tools.",
     )
     p.add_argument("--dir", type=Path, default=None, help="cd into DIR before running")
     p.add_argument("--once", action="store_true", help="run a single loop and exit")
@@ -383,6 +403,16 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def autodetect_models() -> list[ToolSpec]:
+    found = [ToolSpec(t) for t in sorted(VALID_TOOLS) if shutil.which(t)]
+    if not found:
+        sys.exit(
+            f"No supported tools found in PATH. Install one of: "
+            f"{', '.join(sorted(VALID_TOOLS))}, or pass --models explicitly."
+        )
+    return found
+
+
 def main() -> None:
     args = parse_args()
 
@@ -394,6 +424,10 @@ def main() -> None:
 
     if not args.prompt_dir.is_dir():
         sys.exit(f"Prompt directory not found: {args.prompt_dir}")
+
+    if args.models is None:
+        args.models = autodetect_models()
+        log(f"Auto-detected models: {','.join(s.label() for s in args.models)}")
 
     for tool in {s.tool for s in args.models}:
         check_tool(tool)

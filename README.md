@@ -16,10 +16,16 @@ Auto-fix review loop for codebases. Runs a set of review prompts (security, perf
 ## Quick start
 
 ```sh
+# auto-detect installed tools (claude/gemini/codex)
+./review-loop.py
+
 # single tool
 ./review-loop.py --models claude
 
-# pick randomly across tools per review
+# all supported tools, default models per tool
+./review-loop.py --models mixed
+
+# pick randomly across an explicit list
 ./review-loop.py --models claude,gemini,codex
 
 # pin specific models
@@ -35,7 +41,7 @@ Run `./review-loop.py --help` for the full option list.
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `--models` | required | Comma-separated `tool` or `tool:model` entries. One is sampled per review. |
+| `--models` | auto-detect | Comma-separated `tool` or `tool:model` entries (one is sampled per review). `mixed`/`random`/`all` expands to every supported tool. Default: every tool found in `PATH`. |
 | `--dir` | cwd | `cd` here before running. |
 | `--once` | off | Run a single loop and exit. |
 | `--max-loops N` | 0 (infinite) | Stop after N loops. |
