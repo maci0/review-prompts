@@ -1,4 +1,4 @@
-You are a senior software engineer. Your task is to perform a dependency audit of this codebase.
+You are a senior software engineer. Your task is to perform a deep dependency audit of this codebase.
 
 Your goal is to evaluate the health, necessity, and risk of all external dependencies. Focus on practical risk: security, maintenance burden, bloat, and supply chain exposure.
 
@@ -94,13 +94,14 @@ For each finding include:
 - Title
 - Severity: critical / high / medium / low
 - Category
-- Package name and version
+- Location: package name and version, file(s), or area
 - Confidence: confirmed / likely / potential
 - Why it matters
 - Evidence from the code
 - Recommendation: remove / replace / update / pin / monitor / wrap
 - Expected benefit: security / size / maintainability / compliance
-- Migration effort: trivial / low / medium / high
+- Estimated effort
+- Migration risk: trivial / low / medium / high
 
 Output format:
 

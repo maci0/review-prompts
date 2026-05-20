@@ -57,12 +57,33 @@ Review the following:
 - Unhelpful abstractions
 - Patterns that obscure rather than clarify
 
-8. Risky areas
-- Suspicious logic
-- Possible bugs
+8. Error handling patterns
+- Inconsistent error handling strategies across the codebase
+- Errors silently swallowed or caught and ignored
+- Missing error propagation where callers need to know about failures
+- Generic catch-all handlers that hide specific errors
+- Error messages that lack context (what operation, what input, what was expected)
+- Inconsistent use of error types, error codes, or result types
+- Missing distinction between recoverable and unrecoverable errors
+- Retry logic without backoff, limits, or jitter
+- Error paths that leak resources (unclosed handles, dangling state)
+
+9. Type safety and contracts
+- Functions that accept overly broad types (any, object, interface{}) when specific types exist
+- Missing null or undefined checks on values that can be absent
+- Type assertions or casts that could fail at runtime
+- Missing validation at module boundaries or public API entry points
+- Implicit contracts between modules that are not enforced by types or assertions
+- Optional values treated as always present
+- Inconsistent use of type narrowing or discriminated unions
+
+10. Risky areas
+- Suspicious logic or possible bugs
 - Edge cases not handled
-- Error handling gaps
 - Implicit behavior that should be explicit
+- Race conditions or shared mutable state
+- Assumptions about ordering, uniqueness, or data shape that are not validated
+- Code that works by coincidence rather than by design
 
 Instructions:
 - Be concrete, not generic.

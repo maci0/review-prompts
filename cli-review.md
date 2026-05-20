@@ -1,55 +1,93 @@
-You are a senior UX expert specializing in command line interfaces (CLI). Your task is to audit all CLI tools in a software project.
+You are a senior software engineer specializing in CLI design. Your task is to perform a deep CLI audit of this codebase.
 
-Your goal is to evaluate the CLI for consistency, usability, correctness, and adherence to best practices.
+Your goal is to evaluate consistency, usability, correctness, and adherence to best practices across all command line interfaces in the project.
 
 Review the following:
 
 1. Command structure
-- Consistency of command hierarchy
+- Consistency of command hierarchy and nesting depth
 - Logical grouping of subcommands
-- Predictable naming conventions
-- Avoidance of ambiguous or redundant commands
+- Predictable naming conventions (verb-noun, noun-verb, or flat)
+- Avoidance of ambiguous, redundant, or overlapping commands
+- Missing commands for common workflows
+- Inconsistent use of aliases or abbreviations
 
 2. Flags and arguments
-- Consistent flag naming (--long, -s short)
+- Consistent flag naming (--long-form, -s short form)
 - Correct use of boolean flags vs value flags
-- Consistent argument ordering
-- Sensible defaults
-- Avoid conflicting or overlapping flags
+- Consistent argument ordering across related commands
+- Sensible defaults that follow principle of least surprise
+- Conflicting or overlapping flags
+- Missing common flags (--verbose, --quiet, --output, --format)
+- Required arguments that should be optional with defaults
+- Positional arguments that would be clearer as flags
 
 3. Help and documentation
-- --help output clarity and completeness
-- Examples provided for common workflows
-- Clear explanation of arguments and flags
-- Consistency of formatting across commands
+- --help output clarity, completeness, and structure
+- Examples provided for common workflows and edge cases
+- Clear explanation of arguments, flags, and their valid values
+- Consistency of formatting and style across all commands
+- Missing man pages or long-form documentation
+- Version information accessible via --version
+- Missing usage examples in error output for incorrect invocations
 
-4. Error handling
-- Clear and actionable error messages
-- Helpful suggestions for incorrect input
-- Proper exit codes
-- Avoid cryptic or low-level errors
+4. Error handling and exit codes
+- Clear and actionable error messages that explain what went wrong and how to fix it
+- Helpful suggestions for incorrect or misspelled input
+- Proper and consistent exit codes (0 success, 1 general error, 2 usage error)
+- Cryptic or low-level errors leaking to users
+- Missing distinction between user errors and internal errors
+- Errors that do not specify which argument or flag caused the problem
+- Missing validation of flag values, file existence, or permissions before execution
 
 5. Output design
 - Human-readable output by default
-- Optional machine-readable output (json, yaml) where appropriate
-- Consistent formatting across commands
-- Avoid noisy or unnecessary output
+- Optional machine-readable output (--json, --yaml, --csv) where appropriate
+- Consistent formatting and column alignment across commands
+- Noisy or unnecessary output that buries important information
+- Missing color support or color without --no-color opt-out
+- Progress indicators for long-running operations
+- Missing quiet mode (--quiet or -q) to suppress non-essential output
 
 6. Interaction design
 - Predictable behavior across commands
-- Good tab completion compatibility
-- Safe handling of destructive operations
-- Confirmation prompts where appropriate
+- Tab completion compatibility and shell completion generation
+- Safe handling of destructive operations (confirmation, --force, --dry-run)
+- Confirmation prompts where appropriate, with --yes to skip
+- Consistent stdin/stdout/stderr usage
+- Piping and composition with other tools
+- Signal handling (Ctrl+C behavior)
 
-7. Consistency across the project
-- Terminology consistency
-- Uniform flag styles and patterns
-- Shared conventions between tools
+7. Environment and configuration
+- Consistent precedence: flags > environment variables > config file > defaults
+- Environment variable naming conventions and documentation
+- Missing or undocumented config file support
+- Inconsistent behavior across different shells or platforms
+- Sensitive values (tokens, passwords) handled via environment or prompt, not flags
+- Missing shell completion installation commands
 
-8. Best practices
-- Alignment with common CLI conventions (Git, Docker, kubectl)
-- Avoid surprising behavior
-- Minimize cognitive load for users
+8. Scripting and automation
+- Commands that are hard to use in scripts (interactive prompts without --yes)
+- Missing --format or structured output for parsing
+- Exit codes that do not distinguish between error types
+- Output that mixes data and status messages on stdout
+- Missing idempotent or --dry-run modes for write operations
+- Commands that behave differently when stdout is not a TTY
+
+9. Consistency across the project
+- Terminology consistency across all commands and documentation
+- Uniform flag styles and naming patterns
+- Shared conventions between related tools in the project
+- Mixed use of subcommand styles (git-style vs flag-style)
+- Inconsistent behavior for similar operations in different commands
+
+10. Best practices
+- Alignment with common CLI conventions (Git, Docker, kubectl, POSIX)
+- Surprising or counterintuitive behavior
+- Cognitive load from inconsistent patterns
+- Missing XDG base directory compliance for config and data
+- Unnecessary dependencies or runtime requirements
+- Missing offline or degraded-mode behavior
 
 Instructions:
 - Be strict and pragmatic. Focus on real usability and developer experience issues.

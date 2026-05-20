@@ -17,12 +17,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-REVIEWS = [
-    "code-review", "doc-review", "cli-review", "perf-review", "arch-review",
-    "sec-review", "test-review", "ux-review", "api-review", "infra-review",
-    "o11y-review", "deps-review", "db-review",
-]
-
 VALID_TOOLS = {"claude", "gemini", "codex"}
 
 PROMPT_HEADER = "MODE: AUTO_FIX — apply fixes directly to files. Do NOT write a report."
@@ -59,10 +53,54 @@ class ToolSpec:
 
 
 @dataclass
+class ReviewResult:
+    review: str
+    tool: ToolSpec
+    elapsed: float
+    status: str  # "ok", "fail", "timeout", "interrupted", "skipped"
+    exit_code: int | None = None
+
+
+@dataclass
 class Stats:
-    runs: dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    fails: dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    timeouts: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    results: list[ReviewResult] = field(default_factory=list)
+
+    def add(self, result: ReviewResult) -> None:
+        self.results.append(result)
+
+    @property
+    def ok_count(self) -> int:
+        return sum(1 for r in self.results if r.status == "ok")
+
+    @property
+    def fail_count(self) -> int:
+        return sum(1 for r in self.results if r.status in ("fail", "timeout"))
+
+    @property
+    def total_count(self) -> int:
+        return len(self.results)
+
+    def tool_summary(self) -> dict[str, dict[str, int]]:
+        summary: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        for r in self.results:
+            summary[r.tool.tool][r.status] += 1
+        return dict(summary)
+
+    def review_summary(self) -> dict[str, list[ReviewResult]]:
+        by_review: dict[str, list[ReviewResult]] = defaultdict(list)
+        for r in self.results:
+            by_review[r.review].append(r)
+        return dict(by_review)
+
+
+def discover_reviews(prompt_dir: Path) -> list[str]:
+    """Auto-discover *-review.md files in the prompt directory."""
+    reviews = []
+    for f in sorted(prompt_dir.iterdir()):
+        if f.suffix == ".md" and f.stem.endswith("-review"):
+            name = f.stem
+            reviews.append(name)
+    return reviews
 
 
 def parse_duration(s: str) -> int:
@@ -150,33 +188,39 @@ class Runner:
         self.reviews: list[str] = self._filter_reviews()
         self.timeout_secs = parse_duration(args.timeout)
         self.stats = Stats()
-        self.failures: list[str] = []
         self.loop_count = 0
-        self.review_count = 0
-        self.fail_count = 0
         self.stopping = False
         self.interrupt_count = 0
         self.current_proc: subprocess.Popen | None = None
         self.script_start = time.monotonic()
 
     def _filter_reviews(self) -> list[str]:
-        reviews = list(REVIEWS)
-        valid = set(REVIEWS)
+        available = discover_reviews(self.args.prompt_dir)
+        if not available:
+            sys.exit(f"No *-review.md files found in: {self.args.prompt_dir}")
+
+        reviews = list(available)
 
         def split(arg: str) -> set[str]:
             return {x.strip() for x in arg.split(",") if x.strip()}
 
         if self.args.reviews:
             inc = split(self.args.reviews)
-            unknown = inc - valid
+            unknown = inc - set(available)
             if unknown:
-                sys.exit(f"Unknown review in --reviews: {', '.join(sorted(unknown))}")
+                sys.exit(
+                    f"Unknown review(s): {', '.join(sorted(unknown))}\n"
+                    f"Available: {', '.join(available)}"
+                )
             reviews = [r for r in reviews if r in inc]
         if self.args.exclude:
             exc = split(self.args.exclude)
-            unknown = exc - valid
+            unknown = exc - set(available)
             if unknown:
-                sys.exit(f"Unknown review in --exclude: {', '.join(sorted(unknown))}")
+                sys.exit(
+                    f"Unknown review(s) in --exclude: {', '.join(sorted(unknown))}\n"
+                    f"Available: {', '.join(available)}"
+                )
             reviews = [r for r in reviews if r not in exc]
         if not reviews:
             sys.exit("No reviews remain after filtering.")
@@ -190,13 +234,13 @@ class Runner:
         prompt_file = self.args.prompt_dir / f"{review}.md"
         if not prompt_file.is_file():
             log(f"Missing prompt file: {prompt_file} — skipping")
+            self.stats.add(ReviewResult(review, spec, 0.0, "skipped"))
             return
 
         prompt = f"{PROMPT_HEADER}\n\n{prompt_file.read_text()}{PROMPT_SUFFIX}"
 
         start = time.monotonic()
         log(f"Running {review} with {spec.label()} (timeout {self.args.timeout})")
-        self.stats.runs[spec.tool] += 1
 
         cmd = build_cmd(spec, prompt)
         proc = subprocess.Popen(cmd, start_new_session=True)
@@ -220,25 +264,19 @@ class Runner:
         self.interrupt_count = 0
 
         if timed_out:
-            self.fail_count += 1
-            self.stats.timeouts[spec.tool] += 1
-            self.failures.append(
-                f"loop {self.loop_count + 1}: {review} ({spec.label()}) — timeout"
-            )
+            self.stats.add(ReviewResult(review, spec, elapsed, "timeout"))
             return
 
         if rc in (130, 143, -signal.SIGINT, -signal.SIGTERM):
             log(f"Interrupted: {review} ({spec.label()}) after {fmt_duration(elapsed)}")
+            self.stats.add(ReviewResult(review, spec, elapsed, "interrupted", rc))
             self.stopping = True
         elif rc != 0:
             log(f"FAILED: {review} ({spec.label()}) after {fmt_duration(elapsed)} — exit code {rc}")
-            self.fail_count += 1
-            self.stats.fails[spec.tool] += 1
-            self.failures.append(
-                f"loop {self.loop_count + 1}: {review} ({spec.label()}) — exit {rc}"
-            )
+            self.stats.add(ReviewResult(review, spec, elapsed, "fail", rc))
         else:
             log(f"Done: {review} ({spec.label()}) in {fmt_duration(elapsed)}")
+            self.stats.add(ReviewResult(review, spec, elapsed, "ok", 0))
 
     def _kill_proc(self, proc: subprocess.Popen, sig: int) -> None:
         try:
@@ -269,35 +307,67 @@ class Runner:
         print()
         print("=== Review loop stopped ===")
         print(f"Completed loops: {self.loop_count}")
-        print(f"Total reviews run: {self.review_count}")
-        print(f"Failures: {self.fail_count}")
+        print(f"Total reviews run: {self.stats.total_count}")
+        print(f"  Passed: {self.stats.ok_count}")
+        print(f"  Failed: {self.stats.fail_count}")
         print(f"Total time: {fmt_duration(total)}")
 
-        unique_tools = sorted({s.tool for s in self.tools})
-        if len(self.tools) > 1:
+        # Per-tool breakdown
+        tool_summary = self.stats.tool_summary()
+        if len(tool_summary) > 1 or any(s.model for s in self.tools):
             print()
             print("Per-tool stats:")
-            for t in unique_tools:
-                print(
-                    f"  {t:<7} runs={self.stats.runs[t]}  "
-                    f"fails={self.stats.fails[t]}  timeouts={self.stats.timeouts[t]}"
-                )
+            for tool in sorted(tool_summary):
+                counts = tool_summary[tool]
+                parts = [f"{status}={count}" for status, count in sorted(counts.items())]
+                print(f"  {tool:<7} {', '.join(parts)}")
 
-        if self.failures:
+        # Per-review breakdown
+        review_summary = self.stats.review_summary()
+        failed_reviews = {
+            name: results
+            for name, results in review_summary.items()
+            if any(r.status in ("fail", "timeout") for r in results)
+        }
+        if failed_reviews:
             print()
             print("Failed reviews:")
-            for f in self.failures:
-                print(f"  - {f}")
+            for name in sorted(failed_reviews):
+                for r in failed_reviews[name]:
+                    if r.status in ("fail", "timeout"):
+                        detail = f"timeout" if r.status == "timeout" else f"exit {r.exit_code}"
+                        print(f"  - {name} ({r.tool.label()}) — {detail}")
+
+    def list_reviews(self) -> None:
+        available = discover_reviews(self.args.prompt_dir)
+        if not available:
+            print(f"No *-review.md files found in: {self.args.prompt_dir}")
+            return
+        print(f"Available reviews ({len(available)}):")
+        for r in available:
+            prompt_file = self.args.prompt_dir / f"{r}.md"
+            # Extract the goal line (second non-empty line, usually starts with "Your goal")
+            desc = ""
+            try:
+                lines = prompt_file.read_text().splitlines()
+                for line in lines:
+                    if line.startswith("Your goal"):
+                        desc = line
+                        break
+            except OSError:
+                pass
+            active = "✓" if r in self.reviews else "○"
+            print(f"  {active} {r:<20} {desc}")
 
     def dry_run(self) -> None:
         print("DRY RUN — planned schedule for one loop:")
         order = list(self.reviews)
         random.shuffle(order)
         for r in order:
-            print(f"  {r:<15} → {self.pick_tool().label()}")
+            print(f"  {r:<20} → {self.pick_tool().label()}")
         print()
         print(f"Reviews per loop: {len(self.reviews)}")
-        models_str = ",".join(s.label() for s in self.tools)
+        models_str = ", ".join(s.label() for s in self.tools)
         print(
             f"Models: {models_str}  |  timeout: {self.args.timeout}  |  "
             f"prompt-dir: {self.args.prompt_dir}"
@@ -314,6 +384,10 @@ class Runner:
         signal.signal(signal.SIGINT, self.handle_signal)
         signal.signal(signal.SIGTERM, self.handle_signal)
 
+        if self.args.list:
+            self.list_reviews()
+            return
+
         if self.args.dry_run:
             self.dry_run()
             return
@@ -327,13 +401,12 @@ class Runner:
                     if self.stopping:
                         return
                     self.run_review(r)
-                    self.review_count += 1
                 self.loop_count += 1
                 loop_elapsed = time.monotonic() - loop_start
                 print()
                 log(
                     f"=== Loop {self.loop_count} complete in {fmt_duration(loop_elapsed)} "
-                    f"({self.review_count} reviews, {self.fail_count} failures) ==="
+                    f"({self.stats.total_count} reviews, {self.stats.fail_count} failures) ==="
                 )
                 print()
 
@@ -355,6 +428,7 @@ def acquire_lock(path: Path) -> int:
 
 
 def setup_log_tee(log_path: Path) -> None:
+    check_tool("tee")
     tee = subprocess.Popen(["tee", "-a", str(log_path)], stdin=subprocess.PIPE)
     assert tee.stdin is not None
     os.dup2(tee.stdin.fileno(), 1)
@@ -372,6 +446,7 @@ def parse_args() -> argparse.Namespace:
             "  review-loop.py --models claude,gemini,codex\n"
             "  review-loop.py --models claude:opus-4-7,codex:gpt-5-codex\n"
             "  review-loop.py --models mixed,claude:opus-4-7 # all + extra pinned model\n"
+            "  review-loop.py --list                         # show available reviews\n"
         ),
     )
     p.add_argument(
@@ -398,6 +473,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--reviews", default="", help="comma-separated subset to run")
     p.add_argument("--exclude", default="", help="comma-separated reviews to skip")
     p.add_argument("--dry-run", action="store_true", help="print planned schedule and exit")
+    p.add_argument("--list", action="store_true", help="list available reviews and exit")
     args = p.parse_args()
     if args.max_loops < 0:
         p.error("--max-loops must be >= 0")
@@ -428,11 +504,15 @@ def main() -> None:
 
     if args.models is None:
         args.models = autodetect_models()
-        log(f"Auto-detected models: {','.join(s.label() for s in args.models)}")
+        if not args.list:
+            log(f"Auto-detected models: {','.join(s.label() for s in args.models)}")
 
     for tool in {s.tool for s in args.models}:
         check_tool(tool)
-    check_tool("tee")
+
+    if args.list:
+        Runner(args).run()
+        return
 
     acquire_lock(Path.cwd() / ".review-loop.lock")
 

@@ -1,4 +1,4 @@
-You are a senior software engineer and technical writer. Your task is to perform a documentation and comment audit of this codebase.
+You are a senior software engineer and technical writer. Your task is to perform a deep documentation and comment audit of this codebase.
 
 Your goal is to verify that documentation and comments are accurate, useful, and consistent with the actual code. Focus on clarity, correctness, usefulness, and removing unnecessary or misleading text.
 
@@ -49,7 +49,23 @@ Review the following:
 - Missing examples where examples would clarify behavior
 - Documentation that assumes too much internal knowledge
 
-8. Opportunities to improve documentation quality
+8. Architecture and design documentation
+- Missing high-level architecture documentation (system diagram, component overview)
+- Design decisions not recorded (no ADRs, no decision log)
+- Missing explanation of key abstractions, patterns, or conventions used
+- Missing data flow or sequence documentation for complex interactions
+- Architecture documentation that has drifted from the actual system
+- Missing documentation of non-obvious constraints or trade-offs
+
+9. Onboarding and getting started
+- Missing or incomplete setup instructions for new contributors
+- Prerequisites or system dependencies not documented
+- Missing quickstart or hello-world example
+- Development workflow not documented (how to run, test, build, deploy)
+- Missing troubleshooting section for common setup problems
+- Assumed knowledge not stated (expected familiarity with tools, frameworks, or domain)
+
+10. Opportunities to improve documentation quality
 - Replace comments with clearer code
 - Consolidate duplicated documentation
 - Convert large comment blocks into structured documentation
