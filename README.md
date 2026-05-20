@@ -15,14 +15,17 @@ Auto-fix review loop for codebases. Runs a set of review prompts (security, perf
 | `arch-review` | Architecture, module boundaries, dependency direction, layering |
 | `cli-review` | CLI usability, flags, help text, output design, scripting support |
 | `code-review` | Code quality, duplication, dead code, refactoring, type safety |
+| `concurrency-review` | Race conditions, deadlocks, shared state, async correctness, thread safety |
 | `config-review` | Configuration management, environment separation, secrets, feature flags |
 | `db-review` | Schema design, queries, migrations, data integrity, indexing |
 | `deps-review` | Dependency health, unused packages, vulnerabilities, license compliance |
 | `doc-review` | Documentation accuracy, coverage, onboarding, architecture docs |
 | `error-review` | Error handling, resilience, retries, timeouts, failure isolation |
+| `i18n-review` | Internationalization, localization, locale handling, RTL, formatting |
 | `infra-review` | CI/CD, containers, IaC, deployment, secret management |
 | `o11y-review` | Observability: logging, metrics, tracing, alerting, health checks |
 | `perf-review` | Performance bottlenecks, memory, I/O, caching, hot paths |
+| `privacy-review` | Data privacy, GDPR/CCPA compliance, PII handling, consent, data subject rights |
 | `sdk-review` | SDK developer experience, API surface, types, versioning, testability, docs |
 | `sec-review` | Security vulnerabilities, auth, injection, data exposure, cryptography |
 | `test-review` | Test quality, coverage gaps, flaky tests, mock quality, test design |
