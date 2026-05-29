@@ -1,6 +1,6 @@
 # review-prompts
 
-Auto-fix review loop for codebases. Runs a set of review prompts (security, perf, docs, etc.) via `claude`, `gemini`, and/or `codex` CLI tools against the current directory, applying fixes directly rather than producing reports.
+Auto-fix review loop for codebases. Runs a set of review prompts (security, perf, docs, etc.) via `claude`, `gemini`, `codex`, and/or `grok` CLI tools against the current directory, applying fixes directly rather than producing reports.
 
 ## Contents
 
@@ -34,13 +34,13 @@ Auto-fix review loop for codebases. Runs a set of review prompts (security, perf
 ## Requirements
 
 - Python 3.10+
-- At least one of: `claude`, `gemini`, `codex` in `PATH`
+- At least one of: `claude`, `gemini`, `codex`, `grok` in `PATH`
 - `tee` (only if `--log` is used)
 
 ## Quick start
 
 ```sh
-# auto-detect installed tools (claude/gemini/codex)
+# auto-detect installed tools (claude/gemini/codex/grok)
 ./review-loop.py
 
 # list available reviews
