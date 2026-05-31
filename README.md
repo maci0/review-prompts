@@ -19,8 +19,10 @@ Auto-fix review loop for codebases. Runs a set of review prompts (security, perf
 | `config-review` | Configuration management, environment separation, secrets, feature flags |
 | `db-review` | Schema design, queries, migrations, data integrity, indexing |
 | `deps-review` | Dependency health, unused packages, vulnerabilities, license compliance |
+| `design-review` | Technical design decisions, tradeoffs, alternatives, data modeling, tech selection |
 | `doc-review` | Documentation accuracy, coverage, onboarding, architecture docs |
 | `error-review` | Error handling, resilience, retries, timeouts, failure isolation |
+| `functionality-review` | Feature completeness, behavioral correctness, edge cases, contract mismatches |
 | `i18n-review` | Internationalization, localization, locale handling, RTL, formatting |
 | `infra-review` | CI/CD, containers, IaC, deployment, secret management |
 | `o11y-review` | Observability: logging, metrics, tracing, alerting, health checks |
