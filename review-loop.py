@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run review prompts via claude/gemini/codex/grok/agy against current dir."""
+"""Run review prompts via claude/gemini/qwen/codex/grok/agy against current dir."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-VALID_TOOLS = {"claude", "gemini", "codex", "grok", "agy"}
+VALID_TOOLS = {"claude", "gemini", "qwen", "codex", "grok", "agy"}
 
 PROMPT_HEADER = "MODE: AUTO_FIX — apply fixes directly to files. Do NOT write a report."
 
@@ -168,6 +168,11 @@ def build_cmd(spec: ToolSpec, prompt: str) -> list[str]:
         cmd += ["-p", prompt]
     elif spec.tool == "gemini":
         cmd = ["gemini", "-y"]
+        if spec.model:
+            cmd += ["-m", spec.model]
+        cmd += ["-p", prompt]
+    elif spec.tool == "qwen":
+        cmd = ["qwen", "-y"]
         if spec.model:
             cmd += ["-m", spec.model]
         cmd += ["-p", prompt]
@@ -447,7 +452,7 @@ def setup_log_tee(log_path: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Run review prompts via claude/gemini/codex/grok/agy.",
+        description="Run review prompts via claude/gemini/qwen/codex/grok/agy.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
